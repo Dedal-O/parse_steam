@@ -1,15 +1,17 @@
-import requests
+import requests, logging
 from bs4 import BeautifulSoup as bs
 from time import sleep
 from requests.exceptions import Timeout
-from requests.exceptions import ProxyError, TooManyRedirects
+from requests.exceptions import ProxyError#, TooManyRedirects
 from django.db import models
 from django.utils.safestring import mark_safe
 from taggit.managers import TaggableManager
-from ..some_proxies.models import TheProxyModel
+from aiohttp import ServerDisconnectedError, ClientConnectionError, ClientResponseError
+from ..some_proxies.models import NextProxy
 
-
-exp_list = (ProxyError, )
+TooManyRedirects = ClientResponseError
+exp_list = (ProxyError, UnicodeDecodeError, ServerDisconnectedError, ClientConnectionError, TooManyRedirects)
+logger = logging.getLogger('newgames_logger')
 
 
 class GameOfNewModel(models.Model):
@@ -39,33 +41,25 @@ class GameOfNewModel(models.Model):
         else:
             return "(нет обложки)"
 
-    def get_tags(self, session):
+    def get_tags(self, the_session):
+        proxy_string = NextProxy()
         while True:
             try:
-                response = session.get(self.steam_url, timeout=15)
+                response = the_session.get(self.steam_url, proxy=proxy_string, timeout=15)
                 break
             except Timeout:
                 sleep(2)
                 continue
             except exp_list:
-                TheProxyModel.objects.all()[0].switch_next()
-                the_proxy = TheProxyModel.objects.get(last_used=True)
-                the_proxy.switch_next()
-                the_proxy = TheProxyModel.objects.get(last_used=True)
-                proxy_string = f"https://{the_proxy.login}:{the_proxy.password}@{the_proxy.ip}"
-                session.proxies.update({'https': proxy_string})
+                proxy_string = NextProxy()
                 continue
-            except TooManyRedirects:
-                session = requests.Session()
-                continue
-        html_bs = bs(response.content, 'html.parser')
+        html_bs = bs(response.text(), 'html.parser')
         app_tags = html_bs.find_all('a', {'class': 'app_tag'})
         if len(app_tags):
             game_tags = [tag.text.strip() for tag in app_tags]
-#            last_comma = game_tags[:100].rfind(', ')
-#            game_tags = game_tags[:last_comma]
             self.game_tags.set(*game_tags)
             self.save()
+            logger.info(f"for {self.title} found tags {game_tags}")
         return f"{self.id} - {self.title} - {game_tags}"
 
     class Meta:

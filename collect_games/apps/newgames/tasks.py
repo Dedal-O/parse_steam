@@ -1,27 +1,79 @@
-import re, requests, logging
+import re, requests, logging, asyncio
+
 from bs4 import BeautifulSoup as bs
+import aiohttp
+from aiohttp.client_exceptions import TooManyRedirects, ClientResponseError, ClientConnectionError, \
+    ClientProxyConnectionError, ServerTimeoutError, ServerDisconnectedError, ClientHttpProxyError
 from requests.exceptions import Timeout
 from datetime import datetime, date, timedelta
 from time import sleep, strptime
 from django.conf import settings
 from carrot.utilities import publish_message
-from ..some_proxies.models import TheProxyModel
-from .models import GameOfNewModel, exp_list
+from ..some_proxies.models import TheProxyModel, NextProxy
+from .models import GameOfNewModel
 
 release_date_pass_list = ('com', 'ear', 'ann', )
 logger = logging.getLogger('newgames_logger')
+exp_list = (
+#            TooManyRedirects,
+#            ClientResponseError,
+#            ClientConnectionError,
+            ClientProxyConnectionError,
+            ServerDisconnectedError,
+            ClientHttpProxyError,
+#            ServerTimeoutError,
+#            asyncio.TimeoutError
+)
 
 
-def collect_the_games():
+async def sync_game_tag(game_id, sems, the_session):
+    async with sems:
+        the_game = GameOfNewModel.objects.get(id=game_id)
+        proxy_string = NextProxy(http=True)
+        while True:
+                try:
+                    async with the_session.get(the_game.steam_url, cookies={'wants_mature_content': '1', },
+                                               proxy=proxy_string, max_redirects=30) as response:
+                        logger.info(
+                                    f"{datetime.now()} - working with {the_game.steam_url} and proxy {proxy_string}")
+                        content = await response.text()
+                        await response.release()
+                    break
+                except asyncio.TimeoutError:
+                    await asyncio.sleep(1)
+                    continue
+                except exp_list:
+                    proxy_string = NextProxy(http=True)
+                    continue
+                except TooManyRedirects:
+                    logger.info(f"{datetime.now()} - TooManyRedirects exception for page {the_game.steam_url} and proxy {proxy_string}")
+                    print(f"TooManyRedirects exception for page {the_game.steam_url} and proxy {proxy_string}")
+                    return False
+        the_game = GameOfNewModel.objects.get(id=game_id)
+        html_bs = bs(content, 'html.parser')
+        app_tags = html_bs.find_all('a', {'class': 'app_tag'})
+        if len(app_tags):
+            game_tags = [tag.text.strip() for tag in app_tags]
+            logger.info(f"{datetime.now()} - got {game_tags} for {the_game.title}")
+            the_game.game_tags.set(*game_tags)
+            return True
+
+
+async def check_games_tags():
+    sems = asyncio.Semaphore(1000)
+    async with aiohttp.ClientSession() as the_session:
+        tasks = [asyncio.ensure_future(sync_game_tag(game.id, sems, the_session)) for game in GameOfNewModel.objects.all()]
+        print(f" number of tasks {len(tasks)}")
+        return await asyncio.gather(*tasks)
+
+
+def collect_the_games(days_far=14):
     start_moment = datetime.now()
-    GameOfNewModel.objects.filter(release_date__lte=(datetime.now() - timedelta(days=14))).delete()
+    GameOfNewModel.objects.filter(release_date__lte=(datetime.now() - timedelta(days=days_far))).delete()
     logger.info(f"{datetime.now()} - Начало работы сбора новинок")
     the_session = requests.Session()
     the_session.cookies.set('wants_mature_content', '1')
-    TheProxyModel.objects.all()[0].switch_next()
-    the_proxy = TheProxyModel.objects.get(last_used=True)
-    proxy_string = f"https://{the_proxy.login}:{the_proxy.password}@{the_proxy.ip}"
-    the_session.proxies.update({'https': proxy_string})
+    the_session.proxies.update({'https': NextProxy()})
     while True:
         try:
             response = the_session.get(settings.PARSE_START_URL, timeout=15)
@@ -44,7 +96,6 @@ def collect_the_games():
         last_page = 1
     logger.info(f"{datetime.now()} - Последняя страница в списке - {last_page}")
     game_structs = []
-    items_worked = 0
     flag_old_game = False
     for page in range(1, last_page+1):
         if flag_old_game:
@@ -57,10 +108,7 @@ def collect_the_games():
                 sleep(2)
                 continue
             except exp_list:
-                the_proxy.switch_next()
-                the_proxy = TheProxyModel.objects.get(last_used=True)
-                proxy_string = f"https://{the_proxy.login}:{the_proxy.password}@{the_proxy.ip}"
-                the_session.proxies.update({'https': proxy_string})
+                the_session.proxies.update({'https': NextProxy()})
                 continue
         page_html_bs = bs(response.content, 'html.parser')
         for row_item in page_html_bs.find_all("a", attrs=re.compile(".*search_result_row?.*")):
@@ -108,7 +156,7 @@ def collect_the_games():
                 release_date[2] = int(release_date[2])
                 release_date_actual = date(year=release_date[2], month=release_date[1], day=release_date[0], )
                 if release_date_actual is not None:
-                    if datetime.combine(release_date_actual, datetime.min.time()) < (datetime.now() - timedelta(days=14)):
+                    if datetime.combine(release_date_actual, datetime.min.time()) < (datetime.now() - timedelta(days=days_far)):
                         logger.info(f"""{datetime.now()} - Найдена достаточно старая игра с датой {release_date_actual},
                                         обход завершается.
                                         Найдено новых игр {len(game_structs)}""")
@@ -136,7 +184,8 @@ def collect_the_games():
             discount_text = prices_bs[0].find('div', attrs=re.compile('.*search_discount?.*')).text.strip()
             if len(discount_text) > 1:
                 prices_texts = prices_bs[0].find('div', attrs=re.compile('.*search_price?.*discounted?.*')).text.strip().replace(',', '.').split('pуб.')
-#                logger.info(f"{item_struct['title']}, discount text {discount_text}, prices text {prices_texts}")
+                logger.info(f"{item_struct['title']}, discount text {discount_text}, prices text {prices_texts}")
+                logger.info(f"{item_struct['title']}, proxy info {TheProxyModel.objects.get(last_used=True).ip}")
                 game.discount_size = int(re.sub(r'\D+', '', discount_text))
                 game.price_discounted = float(prices_texts[1])
                 game.price_full = float(prices_texts[0])
@@ -144,16 +193,18 @@ def collect_the_games():
             else:
                 price_full_text = prices_bs[0].find('div', attrs=re.compile('.*search_price?.*')).text.strip().replace(',', '.').replace(' pуб.', '')
                 if any(char.isdigit() for char in price_full_text):
+                    logger.info(f"{item_struct['title']}, prices text {price_full_text}")
+                    logger.info(f"{item_struct['title']}, proxy info {TheProxyModel.objects.get(last_used=True).ip}")
                     game.price_full = float(price_full_text)
                     game.price_option = 'full_price'
                 else:
                     game.price_option = 'not_defined'
         game.save()
-        logger.info(f"{datetime.now()} - getting tags for {game.steam_url}")
-        tags_result = game.get_tags(session=the_session)
-        logger.info(f"{datetime.now()} - {tags_result}")
-
     the_session.close()
+    logger.info(f"{datetime.now()} - Основной список пройден. Собираю теги по играм.")
+    ioloop = asyncio.get_event_loop()
+    ioloop.run_until_complete(asyncio.ensure_future(check_games_tags()))
+    ioloop.close()
     ret_message = f"{datetime.now()} - Задача завершена. Затрачено времени {datetime.now() - start_moment}"
     logger.info(ret_message)
     return ret_message
