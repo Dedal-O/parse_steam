@@ -21,7 +21,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('carrot/', include('carrot.urls'))
+    path('carrot/', include('carrot.urls')),
+    path('newgames/', include('apps.newgames.urls')),
 ]
 
 if settings.DEBUG:

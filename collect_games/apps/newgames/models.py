@@ -40,6 +40,7 @@ class GameOfNewModel(models.Model):
             return mark_safe(f"<img src='{self.cover_url}'/>")
         else:
             return "(нет обложки)"
+    show_cover.short_description = 'Обложка'
 
     def get_tags(self, the_session):
         proxy_string = NextProxy()
