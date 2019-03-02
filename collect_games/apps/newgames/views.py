@@ -2,13 +2,17 @@ import csv
 from datetime import datetime
 from django.http import HttpResponse, JsonResponse
 from .models import GameOfNewModel
+from taggit.models import Tag
 
 
 def json_view(request):
-    response = []
+    response = {
+        'tags': [item['name'] for item in Tag.objects.all().values('name')],
+    }
+    json_games = []
     for game in GameOfNewModel.objects.order_by('release_date').all():
         if game.game_tags.count():
-            response.append({
+            json_games.append({
                 "title": game.title,
                 "game_url": game.steam_url,
                 "game_cover": game.cover_url,
@@ -18,6 +22,7 @@ def json_view(request):
                 "discount_size": game.discount_size,
                 "tags": [tag.name for tag in game.game_tags.all()]
             })
+    response['games'] = json_games
     return JsonResponse(response, safe=False)
 
 

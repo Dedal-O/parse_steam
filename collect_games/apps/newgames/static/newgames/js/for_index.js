@@ -4,12 +4,17 @@
         el: '#newgames_app',
         data: {
             jsonReady: 0,
+            allGamesData: [],
             gamesData: [],
+            gameTags: [],
             gamesCount: 0,
             title: "List of some Steam Games",
             currentPage: 0,
             pageSize: 10,
             pagedList: [],
+            sortType: 'title',
+            sortDirect: 'asc',
+            selectedTag: 'all',
         },
         mounted: function() {
             this.loadGames();
@@ -17,24 +22,23 @@
         methods: {
             loadGames: function(){
             //console.info("jsonReady " + this.jsonReady);
-                console.info('gettings games');
                 fetch(jsonURL)
                 .then(this.successCallback, this.errorCallback);
             },
 
             successCallback: function(response) {
-                //console.info('successfully called url: ', response);
                 response.json().then(this.jsonLoaded, this.jsonFailed);
             },
 
             jsonLoaded: function(json_data) {
+                this.gameTags = json_data['tags'].sort((x, y) => { return x.toLowerCase() > y.toLowerCase() ? 1 : -1; });
+                this.allGamesData = json_data['games'];
+                this.gamesData = this.allGamesData;
                 this.jsonReady = 1;
-                this.gamesData = json_data;
+                this.gamesSort();
                 this.gamesCount = this.gamesData.length;
-                console.info("loaded json with " + this.gamesCount + " items");
-                //console.info(this.gamesData[0]);
+                console.info("loaded json with " + this.gamesCount + " games and " + this.gameTags.length + " tags");
                 this.pagedGames();
-                this.pagesCount = this.gamesCount / this.pageSize;
                 //console.info("jsonReady " + this.jsonReady);
             },
 
@@ -44,7 +48,7 @@
                 this.gamesData = [];
                 this.currentPage = 0;
                 this.pageSize = 10;
-                thsi.pagedList = [];
+                this.pagedList = [];
                 console.info("json getting failed");
             },
 
@@ -56,11 +60,18 @@
             },
 
             pagedGames: function() {
+                this.pagesCount = Math.ceil(this.gamesData.length / this.pageSize);
                 if (this.jsonReady === 1) {
                     this.pagedList = this.gamesData.slice(this.currentPage * this.pageSize, (this.currentPage + 1) * this.pageSize);
                 };
             },
 
+            pageFirst: function() {
+                if (this.currentPage > 0) {
+                    this.currentPage = 0;
+                    this.pagedGames();
+                };
+            },
             pagePrevious: function() {
                 if (this.currentPage > 0) {
                     this.currentPage--;
@@ -68,10 +79,98 @@
                 };
             },
             pageNext: function() {
-                if (this.currentPage < (this.pagesCount-1)) {
+                if (this.currentPage < (this.pagesCount - 1)) {
                     this.currentPage++;
                     this.pagedGames();
                 };
+            },
+            pageNext2: function() {
+                if (this.currentPage < (this.pagesCount - 2)) {
+                    this.currentPage++;
+                    this.currentPage++;
+                    this.pagedGames();
+                };
+            },
+            pageLast: function() {
+                if (this.currentPage < (this.pagesCount - 1)) {
+                    this.currentPage = this.pagesCount - 1;
+                    this.pagedGames();
+                };
+            },
+
+            gamesSort: function() {
+                this.gamesData = this.gamesData.sort((a, b) => {
+                    let modifier = this.sortDirect === "asc" ? 1 : -1;
+                    if (a[this.sortType] > b[this.sortType]){
+                        return 1 * modifier;
+                    };
+                    if (a[this.sortType] < b[this.sortType]){
+                        return -1 * modifier;
+                    };
+                    return 0;
+                });
+            },
+
+            sortByTitle: function() {
+                if (this.sortType === "title") {
+                    this.sortDirect = this.sortDirect == 'asc' ? 'desc' : 'asc';
+                }
+                else {
+                    this.sortType = 'title';
+                    this.sortDirect = 'asc';
+                    this.currentPage = 0;
+                }
+                this.gamesSort();
+                this.pagedGames();
+            },
+
+            sortByDate: function() {
+                if (this.sortType === "release_date") {
+                    this.sortDirect = this.sortDirect == 'asc' ? 'desc' : 'asc';
+                }
+                else {
+                    this.sortType = 'release_date';
+                    this.sortDirect = 'asc';
+                    this.currentPage = 0;
+                }
+                this.gamesSort();
+                this.pagedGames();
+            },
+
+            sortByPrice: function() {
+                if (this.sortType === "price_full") {
+                    this.sortDirect = this.sortDirect == 'asc' ? 'desc' : 'asc';
+                }
+                else {
+                    this.sortType = 'price_full';
+                    this.sortDirect = 'asc';
+                    this.currentPage = 0;
+                }
+                this.gamesSort();
+                this.pagedGames();
+            },
+
+            changeSize: function() {
+                this.currentPage = 0;
+                this.pagedGames();
+            },
+
+            tagFilter: function() {
+
+                this.currentPage = 0;
+                if (this.selectedTag === "all") {
+                    this.gamesData = this.allGamesData;
+                }
+                else {
+                //TODO: простой фильтр по нескольким тегам
+                    this.gamesData = this.allGamesData.filter(
+                        function(gameItem) {
+                            return gameItem.tags.indexOf(this.selectedTag) > -1 ? true : false;
+                        },
+                        this);
+                }
+                this.currentPage = 0;
+                this.pagedGames();
             },
         },
     });

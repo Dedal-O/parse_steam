@@ -13,26 +13,69 @@
             <div class="container-fluid jumbotron">
                 <div id="newgames_app">
                     <div v-if="jsonReady==0" class="text-center">
-                        <b-button variant="success" disabled>
-                            <b-spinner variant="success" type="grow" label="Spinning" />
-                        </b-button>
-                            <span class="">Идет загрузка данных</span>
+                        <div class="alert alert-info" role="alert">
+                            <strong>Загрузка!</strong> Идёт загрузка данных
+                        </div>
+                    </div>
+                    <div v-if="jsonReady==2">
+                        <div class="alert alert-danger" role="alert">
+                            <strong>Ошибка!</strong> Не удалось загрузить JSON-данные
+                        </div>
                     </div>
                     <div v-if="jsonReady==1">
                     <div class="card">
                         <h5 class="card-title">${ title }</h5>
-                            <nav aria-label="Пагинация">
-                            <ul class="pagination justify-content-center">
-                                <li class="page-item page-link" @click="pagePrevious"><a><span aria-hidden="true">&laquo;</span></a></li>
-                                <li class="page-item page-link">${ currentPage+1 }</li>
-                                <li class="page-item page-link" @click="pageNext"><a><span aria-hidden="true">&raquo;</span></a></li>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <label for="page-size">игра на странице</label>
+                                <select v-model="pageSize" class="custom-select" id="page-size" style="width: 100px;" @change="changeSize">
+                                    <option value="5" selected>5</option>
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            <nav calss="p-2 self-align-end" aria-label="Пагинация">
+                                <ul class="pagination">
+                                <li class="page-link page-item" v-if="currentPage>0" @click="pageFirst"><a class="to_point"><span aria-hidden="true">1</span></a></li>
+                                <li class="page-item disabled" v-if="currentPage-3>0">
+                                    <a class="page-link" href="#">...</a></li>
+                                <li class="page-link page-item" v-if="currentPage-1>1" @click="pagePrevious">
+                                    <a class="to_point"><span aria-hidden="true">${ currentPage-1 }</span></a></li>
+                                <li class="page-link page-item" v-if="currentPage>1" @click="pagePrevious">
+                                    <a class="to_point"><span aria-hidden="true">${ currentPage }</span></a></li>
+
+                                <li class="page-item active"><a class="page-link" href="#">${ currentPage+1 }</a></li>
+
+                                <li class="page-link page-item" v-if="currentPage+1<pagesCount-1" @click="pageNext">
+                                    <a class="to_point"><span aria-hidden="true">${ currentPage+2 }</span></a></li>
+                                <li class="page-link page-item" v-if="currentPage+2<pagesCount-1" @click="pageNext2">
+                                    <a class="to_point"><span aria-hidden="true">${ currentPage+3 }</span></a></li>
+                                <li class="page-item disabled" v-if="currentPage+3<pagesCount-1">
+                                    <a class="page-link" href="#">...</a></li>
+                                <li class="page-link page-item" v-if="currentPage<pagesCount-1" @click="pageLast"><a class="to_point"><span aria-hidden="true">${ pagesCount }</span></a></li>
                             </ul>
                             </nav>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                        </div>
                         <table class="table table-bordered table-striped">
                             <thead>
                                 <tr>
-                                    <th scope="col"></th><th scope="col">Название</th><th>Дата выпуска</th>
-                                    <th scope="col">Полная цена</th><th scope="col">Метки</th>
+                                    <th scope="col"></th>
+                                    <th scope="col" ><a class="to_point" @click="sortByTitle">Название
+                                        <i style="color: grey;">&uarr;</i> <i style="color: black;">&uarr;</i></a></th>
+                                    <th scope="col" class=" to_point"><a class="to_point" @click="sortByDate">Дата выпуска</a></th>
+                                    <th scope="col" class=" to_point"><a class="to_point" @click="sortByPrice">Полная цена</a></th>
+                                    <th scope="col">
+                                        Метки
+                                        <select v-model="selectedTag" class="custom-select" style="width: 220px;" @change="tagFilter">
+                                            <option value="all">Выбрать все</option>
+                                            <option v-for="tag in gameTags" :value="tag">${ tag }</option>
+                                        </select>
+                                         <br/>(записей ${ gamesData.length })
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -49,10 +92,12 @@
                         </table>
                         <center>
                             <nav aria-label="Пагинация">
-                            <ul class="pagination justify-content-center">
-                                <li class="page-item page-link" @click="pagePrevious"><a><span aria-hidden="true">&laquo;</span></a></li>
+                            <ul class="pagination d-flex justify-content-end">
+                                <li class="page-item page-link to_point" v-if="currentPage>0" @click="pageFirst"><a><span aria-hidden="true">&laquo;</span></a></li>
+                                <li class="page-item page-link to_point" v-if="currentPage>0" @click="pagePrevious"><a><span aria-hidden="true">&lsaquo;</span></a></li>
                                 <li class="page-item page-link">${ currentPage+1 }</li>
-                                <li class="page-item page-link" @click="pageNext"><a><span aria-hidden="true">&raquo;</span></a></li>
+                                <li class="page-item page-link to_point" v-if="currentPage<pagesCount-1" @click="pageNext"><a><span aria-hidden="true">&rsaquo;</span></a></li>
+                                <li class="page-item page-link to_point" v-if="currentPage<pagesCount-1" @click="pageLast"><a><span aria-hidden="true">&raquo;</span></a></li>
                             </ul>
                             </nav>
                         </center>

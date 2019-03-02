@@ -10,11 +10,16 @@ body {
     background-color: #fff;
     font-family: "Nunito Sans", sans-serif;
     color: #3e5569;
-    box-sizing: border-box;
-    -webkit-box-flex: 1;
-    flex: 1 1 auto;
-    padding: 1.25 rem;
+    padding: 1%;
+#    box-sizing: border-box;
+#    -webkit-box-flex: 1;
+#    flex: 1 1 auto;
+#    padding: 1.25 rem;
 }
 
 .card-title {
+}
+
+.to_point:hover {
+    cursor: pointer;
 }
