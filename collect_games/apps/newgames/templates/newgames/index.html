@@ -9,7 +9,7 @@
 {% block content %}
     <br/><br/>
     <div class="row">
-        <div class="offset-sm-1 offset-md-1 col-sm-10 col-md-10">
+        <div class="col-sm-12 col-md-12">
             <div class="container-fluid jumbotron">
                 <div id="newgames_app">
                     <div v-if="jsonReady==0" class="text-center">
@@ -27,7 +27,7 @@
                         <h5 class="card-title">${ title }</h5>
                         <div class="d-flex justify-content-between">
                             <div>
-                                <label for="page-size">игра на странице</label>
+                                <label for="page-size">Игр на странице</label>
                                 <select v-model="pageSize" class="custom-select" id="page-size" style="width: 100px;" @change="changeSize">
                                     <option value="5" selected>5</option>
                                     <option value="10">10</option>
@@ -63,18 +63,50 @@
                         <table class="table table-bordered table-striped">
                             <thead>
                                 <tr>
-                                    <th scope="col"></th>
-                                    <th scope="col" ><a class="to_point" @click="sortByTitle">Название
-                                        <i style="color: grey;">&uarr;</i> <i style="color: black;">&uarr;</i></a></th>
-                                    <th scope="col" class=" to_point"><a class="to_point" @click="sortByDate">Дата выпуска</a></th>
-                                    <th scope="col" class=" to_point"><a class="to_point" @click="sortByPrice">Полная цена</a></th>
-                                    <th scope="col">
-                                        Метки
-                                        <select v-model="selectedTag" class="custom-select" style="width: 220px;" @change="tagFilter">
-                                            <option value="all">Выбрать все</option>
-                                            <option v-for="tag in gameTags" :value="tag">${ tag }</option>
-                                        </select>
-                                         <br/>(записей ${ gamesData.length })
+                                    <th scope="col" class="col-md-1"></th>
+                                    <th scope="col" class="col-md-3">Название
+                                        <a @click="sortByTitle" style="cursor: pointer; font-size:175%;">
+                                        <i style="color: black;" v-if="sortType == 'title' && sortDirect == 'desc'">&uarr;</i>
+                                        <i style="color: grey;" v-else>&uarr;</i>
+                                        <i style="color: black;" v-if="sortType == 'title' && sortDirect == 'asc'">&darr;</i>
+                                        <i style="color: grey;" v-else>&darr;</i></a></th>
+                                    <th scope="col" class="col-md-2">Дата выпуска
+                                        <a class="to_point" @click="sortByDate" style="cursor: pointer; font-size:175%;">
+                                        <i style="color: black;" v-if="sortType == 'release_date' && sortDirect == 'desc'">&uarr;</i>
+                                        <i style="color: grey;" v-else>&uarr;</i>
+                                        <i style="color: black;" v-if="sortType == 'release_date' && sortDirect == 'asc'">&darr;</i>
+                                        <i style="color: grey;" v-else>&darr;</i>                                    </a></th>
+                                    <th scope="col" class="col-md-2">Полная цена
+                                        <a class="to_point" @click="sortByPrice" style="cursor: pointer; font-size:175%;">
+                                        <i style="color: black;" v-if="sortType == 'price_full' && sortDirect == 'desc'">&uarr;</i>
+                                        <i style="color: grey;" v-else>&uarr;</i>
+                                        <i style="color: black;" v-if="sortType == 'price_full' && sortDirect == 'asc'">&darr;</i>
+                                        <i style="color: grey;" v-else>&darr;</i>                                        </a></th>
+                                    <th scope="col"  class="col-md-4">
+                                        <multiselect id="tags_select"
+                                                :options="gameTags"
+                                                v-model="selectedTags"
+                                                :multiple="true"
+                                                :close-on-select="false"
+                                                :clear-on-select="false"
+                                                :preserve-search="true"
+                                                :preselected-first="false"
+                                                select-label="Выбрать"
+                                                selected-label="Выбрано"
+                                                deselect-label="Убрать"
+                                                placeholder="Метки"
+                                                @close="tagFilter"
+                                        >
+                                            <template
+                                                slot="selection"
+                                                slot-scope="{ values, search, isOpen }">
+                                                <span class="multiselect__single" v-if="values.length &amp;&amp; !isOpen">
+                                                    Выбрано меток: ${ values.length }
+                                                </span>
+                                            </template>
+                                        </multiselect>
+                                        <label for="tags_select" class="typo__label">(записей ${ gamesData.length })</label>
+                                        <br/>
                                     </th>
                                 </tr>
                             </thead>
@@ -91,13 +123,25 @@
                             </tbody>
                         </table>
                         <center>
-                            <nav aria-label="Пагинация">
-                            <ul class="pagination d-flex justify-content-end">
-                                <li class="page-item page-link to_point" v-if="currentPage>0" @click="pageFirst"><a><span aria-hidden="true">&laquo;</span></a></li>
-                                <li class="page-item page-link to_point" v-if="currentPage>0" @click="pagePrevious"><a><span aria-hidden="true">&lsaquo;</span></a></li>
-                                <li class="page-item page-link">${ currentPage+1 }</li>
-                                <li class="page-item page-link to_point" v-if="currentPage<pagesCount-1" @click="pageNext"><a><span aria-hidden="true">&rsaquo;</span></a></li>
-                                <li class="page-item page-link to_point" v-if="currentPage<pagesCount-1" @click="pageLast"><a><span aria-hidden="true">&raquo;</span></a></li>
+                            <nav calss="p-2 self-align-end" aria-label="Пагинация">
+                                <ul class="pagination d-flex justify-content-end">
+                                <li class="page-link page-item" v-if="currentPage>0" @click="pageFirst"><a class="to_point"><span aria-hidden="true">1</span></a></li>
+                                <li class="page-item disabled" v-if="currentPage-3>0">
+                                    <a class="page-link" href="#">...</a></li>
+                                <li class="page-link page-item" v-if="currentPage-1>1" @click="pagePrevious">
+                                    <a class="to_point"><span aria-hidden="true">${ currentPage-1 }</span></a></li>
+                                <li class="page-link page-item" v-if="currentPage>1" @click="pagePrevious">
+                                    <a class="to_point"><span aria-hidden="true">${ currentPage }</span></a></li>
+
+                                <li class="page-item active"><a class="page-link" href="#">${ currentPage+1 }</a></li>
+
+                                <li class="page-link page-item" v-if="currentPage+1<pagesCount-1" @click="pageNext">
+                                    <a class="to_point"><span aria-hidden="true">${ currentPage+2 }</span></a></li>
+                                <li class="page-link page-item" v-if="currentPage+2<pagesCount-1" @click="pageNext2">
+                                    <a class="to_point"><span aria-hidden="true">${ currentPage+3 }</span></a></li>
+                                <li class="page-item disabled" v-if="currentPage+3<pagesCount-1">
+                                    <a class="page-link" href="#">...</a></li>
+                                <li class="page-link page-item" v-if="currentPage<pagesCount-1" @click="pageLast"><a class="to_point"><span aria-hidden="true">${ pagesCount }</span></a></li>
                             </ul>
                             </nav>
                         </center>

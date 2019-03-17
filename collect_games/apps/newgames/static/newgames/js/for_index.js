@@ -1,12 +1,18 @@
+//import Multiselect from 'vue-multiselect'
+
     var jsonURL = "/newgames/list.json"
     var App = new Vue({
         delimiters: ['${', '}'],
         el: '#newgames_app',
+        components: {
+            Multiselect: window.VueMultiselect.default
+        },
         data: {
             jsonReady: 0,
             allGamesData: [],
             gamesData: [],
             gameTags: [],
+            selectedTags: [],
             gamesCount: 0,
             title: "List of some Steam Games",
             currentPage: 0,
@@ -156,21 +162,52 @@
             },
 
             tagFilter: function() {
-
                 this.currentPage = 0;
-                if (this.selectedTag === "all") {
-                    this.gamesData = this.allGamesData;
-                }
-                else {
-                //TODO: простой фильтр по нескольким тегам
-                    this.gamesData = this.allGamesData.filter(
+                if (this.selectedTags && this.selectedTags.length) {
+                    this.gamesData = [];
+                    this.selectedTags.forEach(function(tag, i) {
+                        this.App.gamesData = this.App.gamesData.concat(
+                            this.App.allGamesData.filter(function(gameItem){
+                                return gameItem.tags.indexOf(tag) > -1 ? true : false;
+                            })
+                        );
+                    });
+/*                    this.gamesData = this.allGamesData.filter(
                         function(gameItem) {
-                            return gameItem.tags.indexOf(this.selectedTag) > -1 ? true : false;
+                            console.info(this.selectedTags.length);
+                            for (i=0; i=this.selectedTags.length-1; i++){
+                                console.info(i);
+//                                tag = this.selectedTags[i];
+//                                console.info(tag);
+                                if (gameItem.tags.indexOf(tag) > -1) {
+                                    return true;
+                                }
+                            };
+                            return false;
                         },
                         this);
+*/                }
+                else {
+                    console.info("no tags selected");
+                    this.gamesData = this.allGamesData;
                 }
                 this.currentPage = 0;
                 this.pagedGames();
             },
         },
     });
+
+/*
+    //sel_tags = new Vue.component('vue-multiselect', window.VueMultiselect.default);
+    export default {
+        components: {
+            Multiselect
+        },
+        data () {
+            return {
+                value: [],
+                options: App.data.gameTags;
+            }
+        }
+    }
+*/
