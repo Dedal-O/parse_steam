@@ -1,6 +1,7 @@
-//import Multiselect from 'vue-multiselect'
 
-    var jsonURL = "/newgames/list.json"
+    var jsonURL = "/list.json";
+    var statusURL = "/task_status";
+    var listReady = false;
     var App = new Vue({
         delimiters: ['${', '}'],
         el: '#newgames_app',
@@ -8,6 +9,7 @@
             Multiselect: window.VueMultiselect.default
         },
         data: {
+            listReady: false,
             jsonReady: 0,
             allGamesData: [],
             gamesData: [],
@@ -23,11 +25,22 @@
             selectedTag: 'all',
         },
         mounted: function() {
-            this.loadGames();
+            fetch(statusURL)
+            .then(function(response) {
+                        response.json().then(function(json_data) {
+                                                    App.listReady = json_data['list_ready'];
+                                                    if (App.listReady === true)
+                                                        {  App.loadGames(); }
+                                                },
+                                             function() { console.info('error checking game status');}
+                        );
+                    },
+                  function() {console.info('fetch negative');}
+                  );
+            this.listReady = listReady;
         },
         methods: {
             loadGames: function(){
-            //console.info("jsonReady " + this.jsonReady);
                 fetch(jsonURL)
                 .then(this.successCallback, this.errorCallback);
             },
@@ -37,15 +50,14 @@
             },
 
             jsonLoaded: function(json_data) {
+                this.listReady = json_data['list_ready'];
                 this.gameTags = json_data['tags'].sort((x, y) => { return x.toLowerCase() > y.toLowerCase() ? 1 : -1; });
                 this.allGamesData = json_data['games'];
                 this.gamesData = this.allGamesData;
                 this.jsonReady = 1;
                 this.gamesSort();
                 this.gamesCount = this.gamesData.length;
-                console.info("loaded json with " + this.gamesCount + " games and " + this.gameTags.length + " tags");
                 this.pagedGames();
-                //console.info("jsonReady " + this.jsonReady);
             },
 
             jsonFailed: function(json_data) {
@@ -172,21 +184,7 @@
                             })
                         );
                     });
-/*                    this.gamesData = this.allGamesData.filter(
-                        function(gameItem) {
-                            console.info(this.selectedTags.length);
-                            for (i=0; i=this.selectedTags.length-1; i++){
-                                console.info(i);
-//                                tag = this.selectedTags[i];
-//                                console.info(tag);
-                                if (gameItem.tags.indexOf(tag) > -1) {
-                                    return true;
-                                }
-                            };
-                            return false;
-                        },
-                        this);
-*/                }
+                }
                 else {
                     console.info("no tags selected");
                     this.gamesData = this.allGamesData;
@@ -196,18 +194,3 @@
             },
         },
     });
-
-/*
-    //sel_tags = new Vue.component('vue-multiselect', window.VueMultiselect.default);
-    export default {
-        components: {
-            Multiselect
-        },
-        data () {
-            return {
-                value: [],
-                options: App.data.gameTags;
-            }
-        }
-    }
-*/

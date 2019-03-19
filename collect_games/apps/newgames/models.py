@@ -66,3 +66,7 @@ class GameOfNewModel(models.Model):
     class Meta:
         verbose_name = 'Игровая новинка'
         verbose_name_plural = 'Новинки игр'
+
+
+class TaskCollectCheckModel(models.Model):
+    completed_flag = models.BooleanField(verbose_name='Задача выполнена', default=True)

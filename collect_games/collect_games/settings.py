@@ -23,7 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'carrot',
+    'django_crontab'
     'taggit',
     'apps.newgames',
     'apps.some_proxies',
@@ -103,18 +103,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media_content/')
 
 MIMIC_HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
-CARROT = {
-    'default-broker': 'pyamqp://quest@localhost:5672/virtual_carrot',
-    'monitor_authentication': ['django.contrib.auth.decorators.login_required'],
-    'task_modules': ['apps.newgames.tasks', ],
-    'queues': [
-        {
-            'name': 'queue_newgames',
-            'host': 'amqp://guest:guest@localhost:5672/virtual_newgames/',
-            'concurrency': 1
-        }
-    ]
-}
 
 LOG_FILE_NEWGAMES = os.path.join(BASE_DIR.replace('src/collect_games', ''), 'logs', 'django_newgames.log')
 LOGGING = {

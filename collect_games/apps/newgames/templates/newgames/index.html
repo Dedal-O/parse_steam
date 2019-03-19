@@ -13,9 +13,17 @@
         <div class="col-sm-12 col-md-12">
             <div class="container-fluid jumbotron">
                 <div id="newgames_app">
+                    <div v-if="listReady === false">
+                        <div class="alert alert-secondary" role="alert">
+                            <center>
+                                <strong>Обновление!</strong><br/>Идёт обновление списка игр
+                            </center>
+                        </div>
+                    </div>
+                    <div v-else>
                     <div v-if="jsonReady==0" class="text-center">
                         <div class="alert alert-info" role="alert">
-                            <strong>Загрузка!</strong> Идёт загрузка данных
+                            <strong>Загрузка!</strong><br/>Идёт загрузка данных
                         </div>
                     </div>
                     <div v-if="jsonReady==2">
@@ -24,6 +32,9 @@
                         </div>
                     </div>
                     <div v-if="jsonReady==1">
+                        <center><a href="{% url 'renew' %}" type="button" class="btn btn-outline-danger">
+                            <strong>ОБНОВИТЬ СПИСОК</strong></a></center>
+                        <br/>
                     <div class="px-2 py-1" style="background-color: #fff; color: #3e5569;font-family: 'Nunito Sans', sans-serif;">
                         <h5 class="card-title">${ title }</h5>
                         <div class="d-flex justify-content-between">
@@ -64,26 +75,26 @@
                         <table class="table table-bordered table-striped">
                             <thead>
                                 <tr>
-                                    <th scope="col" class="col-md-1"></th>
-                                    <th scope="col" class="col-md-3">Название
+                                    <th scope="col" class="col-sm-1 col-md-1 col-lg-1"></th>
+                                    <th scope="col" class="col-sm-3 col-md-3 col-lg-3">Название
                                         <a @click="sortByTitle" style="cursor: pointer;">
                                         <i style="color: black;" v-if="sortType == 'title' && sortDirect == 'desc'">&uarr;</i>
                                         <i style="color: grey;" v-else>&uarr;</i>
                                         <i style="color: black;" v-if="sortType == 'title' && sortDirect == 'asc'">&darr;</i>
                                         <i style="color: grey;" v-else>&darr;</i></a></th>
-                                    <th scope="col" class="col-md-2">Дата выпуска
+                                    <th scope="col" class="col-sm-2 col-md-2 col-lg-2">Дата выпуска
                                         <a class="to_point" @click="sortByDate" style="cursor: pointer; font-size:96%">
                                         <i style="color: black;" v-if="sortType == 'release_date' && sortDirect == 'desc'">&uarr;</i>
                                         <i style="color: grey;" v-else>&uarr;</i>
                                         <i style="color: black;" v-if="sortType == 'release_date' && sortDirect == 'asc'">&darr;</i>
                                         <i style="color: grey;" v-else>&darr;</i>                                    </a></th>
-                                    <th scope="col" class="col-md-2">Полная цена
+                                    <th scope="col" class="col-sm-2 col-md-2 col-lg-2">Полная цена, руб.
                                         <a class="to_point" @click="sortByPrice" style="cursor: pointer;">
                                         <i style="color: black;" v-if="sortType == 'price_full' && sortDirect == 'desc'">&uarr;</i>
                                         <i style="color: grey;" v-else>&uarr;</i>
                                         <i style="color: black;" v-if="sortType == 'price_full' && sortDirect == 'asc'">&darr;</i>
                                         <i style="color: grey;" v-else>&darr;</i>                                        </a></th>
-                                    <th scope="col"  class="col-md-4">
+                                    <th scope="col"  class="col-sm-4 col-md-4 col-lg-4">
                                         <multiselect id="tags_select"
                                                 :options="gameTags"
                                                 v-model="selectedTags"
@@ -106,7 +117,7 @@
                                                 </span>
                                             </template>
                                         </multiselect>
-                                        <label for="tags_select" class="typo__label">(записей ${ gamesData.length })</label>
+                                        <label class="typo__label">(записей ${ gamesData.length })</label>
                                         <br/>
                                     </th>
                                 </tr>
@@ -148,6 +159,7 @@
                         </center>
                     </div>
 
+                    </div>
                     </div>
                 </div>
             </div>

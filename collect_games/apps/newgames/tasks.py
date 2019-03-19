@@ -1,5 +1,4 @@
 import re, requests, logging, asyncio
-
 from bs4 import BeautifulSoup as bs
 import aiohttp
 from aiohttp.client_exceptions import TooManyRedirects, ClientResponseError, ClientConnectionError, \
@@ -8,9 +7,8 @@ from requests.exceptions import Timeout
 from datetime import datetime, date, timedelta
 from time import sleep, strptime
 from django.conf import settings
-from carrot.utilities import publish_message
 from ..some_proxies.models import TheProxyModel, NextProxy
-from .models import GameOfNewModel
+from .models import GameOfNewModel, TaskCollectCheckModel
 
 release_date_pass_list = ('com', 'ear', 'ann', )
 logger = logging.getLogger('newgames_logger')
@@ -63,12 +61,15 @@ async def check_games_tags():
     sems = asyncio.Semaphore(1000)
     async with aiohttp.ClientSession() as the_session:
         tasks = [asyncio.ensure_future(sync_game_tag(game.id, sems, the_session)) for game in GameOfNewModel.objects.all()]
-        print(f" number of tasks {len(tasks)}")
+        logger.info(f"async - number of tasks {len(tasks)}")
         return await asyncio.gather(*tasks)
 
 
 def collect_the_games(days_far=14):
     start_moment = datetime.now()
+    if TaskCollectCheckModel.objects.count == 0:
+        TaskCollectCheckModel.objects.create()
+    TaskCollectCheckModel.objects.update(completed_flag=False)
     GameOfNewModel.objects.filter(release_date__lte=(datetime.now() - timedelta(days=days_far))).delete()
     logger.info(f"{datetime.now()} - Начало работы сбора новинок")
     the_session = requests.Session()
@@ -184,8 +185,8 @@ def collect_the_games(days_far=14):
             discount_text = prices_bs[0].find('div', attrs=re.compile('.*search_discount?.*')).text.strip()
             if len(discount_text) > 1:
                 prices_texts = prices_bs[0].find('div', attrs=re.compile('.*search_price?.*discounted?.*')).text.strip().replace(',', '.').split('pуб.')
-                logger.info(f"{item_struct['title']}, discount text {discount_text}, prices text {prices_texts}")
-                logger.info(f"{item_struct['title']}, proxy info {TheProxyModel.objects.get(last_used=True).ip}")
+#                logger.info(f"{item_struct['title']}, discount text {discount_text}, prices text {prices_texts}")
+#                logger.info(f"{item_struct['title']}, proxy info {TheProxyModel.objects.get(last_used=True).ip}")
                 game.discount_size = int(re.sub(r'\D+', '', discount_text))
                 game.price_discounted = float(prices_texts[1])
                 game.price_full = float(prices_texts[0])
@@ -193,8 +194,8 @@ def collect_the_games(days_far=14):
             else:
                 price_full_text = prices_bs[0].find('div', attrs=re.compile('.*search_price?.*')).text.strip().replace(',', '.').replace(' pуб.', '')
                 if any(char.isdigit() for char in price_full_text):
-                    logger.info(f"{item_struct['title']}, prices text {price_full_text}")
-                    logger.info(f"{item_struct['title']}, proxy info {TheProxyModel.objects.get(last_used=True).ip}")
+#                    logger.info(f"{item_struct['title']}, prices text {price_full_text}")
+#                    logger.info(f"{item_struct['title']}, proxy info {TheProxyModel.objects.get(last_used=True).ip}")
                     game.price_full = float(price_full_text)
                     game.price_option = 'full_price'
                 else:
@@ -207,7 +208,5 @@ def collect_the_games(days_far=14):
     ioloop.close()
     ret_message = f"{datetime.now()} - Задача завершена. Затрачено времени {datetime.now() - start_moment}"
     logger.info(ret_message)
+    TaskCollectCheckModel.objects.update(completed_flag=True)
     return ret_message
-
-
-publish_message(collect_the_games, )
