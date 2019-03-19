@@ -32,8 +32,7 @@ async def sync_game_tag(game_id, sems, the_session):
                 try:
                     async with the_session.get(the_game.steam_url, cookies={'wants_mature_content': '1', },
                                                proxy=proxy_string, max_redirects=30) as response:
-                        logger.info(
-                                    f"{datetime.now()} - working with {the_game.steam_url} and proxy {proxy_string}")
+#                        logger.info(f"{datetime.now()} - working with {the_game.steam_url} and proxy {proxy_string}")
                         content = await response.text()
                         await response.release()
                     break
@@ -52,7 +51,7 @@ async def sync_game_tag(game_id, sems, the_session):
         app_tags = html_bs.find_all('a', {'class': 'app_tag'})
         if len(app_tags):
             game_tags = [tag.text.strip() for tag in app_tags]
-            logger.info(f"{datetime.now()} - got {game_tags} for {the_game.title}")
+#            logger.info(f"{datetime.now()} - got {game_tags} for {the_game.title}")
             the_game.game_tags.set(*game_tags)
             return True
 

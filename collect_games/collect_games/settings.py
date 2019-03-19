@@ -23,7 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_crontab'
+    'django_crontab',
     'taggit',
     'apps.newgames',
     'apps.some_proxies',
